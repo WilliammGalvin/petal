@@ -1,27 +1,67 @@
-cmake_minimum_required(VERSION 3.20)
-project(petal VERSION 0.1.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.23)
 
-set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+project(petal
+    VERSION 0.1.0
+    DESCRIPTION "Pretty CLI library for C++23"
+    LANGUAGES CXX
+)
 
-if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
-  set(PETAL_IS_TOP_LEVEL ON)
-else()
-  set(PETAL_IS_TOP_LEVEL OFF)
+option(PETAL_BUILD_EXAMPLES
+  "Build the example programs" ${PROJECT_IS_TOP_LEVEL})
+
+option(PETAL_INSTALL
+  "Generate install and export rules" ${PROJECT_IS_TOP_LEVEL})
+
+option(PETAL_WARNINGS_AS_ERRORS
+  "Treat compiler warnings as errors" OFF)
+
+if(PROJECT_IS_TOP_LEVEL)
+  set(CMAKE_CXX_STANDARD_REQUIRED ON)
+  set(CMAKE_CXX_EXTENSIONS OFF)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+  if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE Release CACHE STRING "Build type" FORCE)
+  endif()
 endif()
 
-option(PETAL_BUILD_EXAMPLES "Build petal examples" ${PETAL_IS_TOP_LEVEL})
-
-add_library(petal src/petal.cpp)
-add_library(petal::petal ALIAS petal)
-
-target_include_directories(petal
-  PUBLIC
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-)
-target_compile_features(petal PUBLIC cxx_std_23)
+add_subdirectory(src)
 
 if(PETAL_BUILD_EXAMPLES)
   add_subdirectory(examples)
+endif()
+
+if(PETAL_INSTALL)
+  include(GNUInstallDirs)
+  include(CMakePackageConfigHelpers)
+
+  set(PETAL_INSTALL_CMAKEDIR "${CMAKE_INSTALL_LIBDIR}/cmake/petal")
+
+  install(TARGETS petal
+        EXPORT petalTargets
+        FILE_SET HEADERS
+    )
+
+  install(EXPORT petalTargets
+        NAMESPACE petal::
+        DESTINATION "${PETAL_INSTALL_CMAKEDIR}"
+    )
+
+  configure_package_config_file(
+        cmake/petal_config.cmake.in
+        "${CMAKE_CURRENT_BINARY_DIR}/petal-config.cmake"
+        INSTALL_DESTINATION "${PETAL_INSTALL_CMAKEDIR}"
+    )
+
+  write_basic_package_version_file(
+        "${CMAKE_CURRENT_BINARY_DIR}/petal-config-version.cmake"
+        VERSION ${PROJECT_VERSION}
+        COMPATIBILITY SameMajorVersion
+    )
+
+  install(FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/petal-config.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/petal-config-version.cmake"
+        DESTINATION "${PETAL_INSTALL_CMAKEDIR}"
+    )
 endif()
